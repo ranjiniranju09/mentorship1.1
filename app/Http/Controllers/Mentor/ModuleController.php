@@ -40,15 +40,6 @@ class ModuleController extends Controller
                 ->whereNull('deleted_at')
                 ->get();
 
-            // Check quiz eligibility for each chapter
-            // foreach ($module->chapters as $chapter) {
-            //     // Join questions and tests tables to check for MCQ questions related to the chapter
-            //     $chapter->has_quiz = DB::table('questions')
-            //         ->join('tests', 'questions.test_id', '=', 'tests.id')  // Join tests table to questions
-            //         ->where('tests.chapter_id', $chapter->id)  // Check for chapter_id in the tests table
-            //         ->where('questions.mcq', 1)  // Ensure that the question is an MCQ
-            //         ->exists();  // Check if any matching records exist
-            // }
         }
 
         // Pass the modules with chapters and quiz eligibility to the view
@@ -153,58 +144,69 @@ class ModuleController extends Controller
 
     }
 
-    
+
+
     public function menteemoduleprogress()
-{
-    $mentorEmail = auth()->user()->email;
+    {
+        $mentorEmail = auth()->user()->email;
 
-    $mentor = DB::table('mentors')->where('email', $mentorEmail)->first();
-    if (!$mentor) {
-        return redirect()->back()->with('error', 'Mentor not found.');
+        $mentor = DB::table('mentors')->where('email', $mentorEmail)->first();
+        if (!$mentor) {
+            return redirect()->back()->with('error', 'Mentor not found.');
+        }
+
+        $mentorId = $mentor->id;
+
+        // ✅ Get mapped mentee IDs for this mentor
+        $menteeIds = DB::table('mappings')
+            ->where('mentorname_id', $mentorId)
+            ->pluck('menteename_id')
+            ->toArray();
+
+        // ✅ Get completed module IDs for all mapped mentees
+        $moduleCompletionStatus = DB::table('module_completion_tracker')
+            ->whereIn('mentee_id', $menteeIds)
+            ->pluck('module_id')
+            ->unique()
+            ->toArray();
+
+        $modules = DB::table('modules')->whereNull('deleted_at')->get();
+
+        $progressData = [];
+        foreach ($modules as $module) {
+            $totalChapters = DB::table('chapters')->where('module_id', $module->id)->count();
+
+            // Sum completions from all mentees
+            $completedChapters = DB::table('module_completion_tracker')
+                ->whereIn('mentee_id', $menteeIds)
+                ->where('module_id', $module->id)
+                ->count();
+
+            $completionPercentage = ($totalChapters > 0)
+                ? ($completedChapters / ($totalChapters * count($menteeIds))) * 100
+                : 0;
+
+            $progressData[] = [
+                'module_name' => $module->name,
+                'completion_percentage' => round($completionPercentage, 2),
+            ];
+        }
+
+        $sessions = [];
+        foreach ($modules as $module) {
+            $session = DB::table('sessions')
+                ->where('modulename_id', $module->id)
+                ->whereIn('menteename_id', $menteeIds)
+                ->get();
+
+            $sessions[$module->id] = $session->isNotEmpty() ? $session : [];
+        }
+
+        return view('mentor.modules.menteemoduleprogress', compact('modules', 'sessions', 'moduleCompletionStatus', 'progressData'));
     }
 
-    $mentorId = $mentor->id;
 
-    $moduleCompletionStatus = DB::table('module_completion_tracker')
-        ->where('mentee_id', $mentorId)
-        ->pluck('module_id') // Get all completed module IDs
-        ->toArray();
 
-    $modules = DB::table('modules')->whereNull('deleted_at')->get();
-
-    $progressData = [];
-    foreach ($modules as $module) {
-        $totalChapters = DB::table('chapters')->where('module_id', $module->id)->count();
-
-        $completedChapters = DB::table('module_completion_tracker')
-            ->where('mentee_id', $mentorId)
-            ->where('module_id', $module->id)
-            ->count();
-
-        $completionPercentage = ($totalChapters > 0) ? ($completedChapters / $totalChapters) * 100 : 0;
-
-        $progressData[] = [
-            'module_name' => $module->name,
-            'completion_percentage' => round($completionPercentage, 2),
-        ];
-    }
-
-    $sessions = [];
-    foreach ($modules as $module) {
-        $session = DB::table('sessions')
-            ->where('modulename_id', $module->id)
-            ->where('menteename_id', $mentorId)
-            ->get();
-
-        $sessions[$module->id] = $session->isNotEmpty() ? $session : [];
-    }
-
-    return view('mentor.modules.menteemoduleprogress', compact('modules', 'sessions', 'moduleCompletionStatus', 'progressData'));
-}
-
-    
-  
-  
 
 public function markChapterCompletion($module_id)
 {
@@ -319,51 +321,5 @@ public function markChapterCompletion($module_id)
         return view('mentor.modules.moduleList',compact('modules','session','sessions_list','mentor'));
         }
     }
-    // public function modulecompletionmail()
-    // {
-    //     // Step 1: Get the logged-in mentor
-    //     $mentor = auth()->user(); // Assuming the mentor is logged in
-
-    //     // Step 2: Fetch the mapped mentee details for the logged-in mentor
-    //     $mapping = DB::table('mappings')
-    //         ->where('mentor_email', $mentor->email)
-    //         ->first();
-
-    //     if (!$mapping) {
-    //         return redirect()->back()->with('error', 'No mapped mentee found for this mentor.');
-    //     }
-
-    //     $mentee_id = $mapping->mentee_id;
-
-    //     // Step 3: Get total chapters per module
-    //     $moduleCounts = DB::table('chapters')
-    //         ->select('module_id', DB::raw('COUNT(*) as total_chapters'))
-    //         ->groupBy('module_id')
-    //         ->get();
-
-    //     // Step 4: Get completed chapters per module for the mapped mentee
-    //     $completionStatus = DB::table('module_completion_tracker')
-    //         ->select('module_id', DB::raw('COUNT(DISTINCT chapter_id) as completed_chapters'))
-    //         ->where('mentee_id', $mentee_id)
-    //         ->groupBy('module_id')
-    //         ->get();
-
-    //     // Step 5: Merge and check if all chapters are completed for the mapped mentee
-    //     $completionCheck = [];
-
-    //     foreach ($moduleCounts as $module) {
-    //         // Find the completed chapters for the current module
-    //         $status = $completionStatus->firstWhere('module_id', $module->module_id);
-    //         $completedChapters = $status ? $status->completed_chapters : 0;
-    //         $isCompleted = $module->total_chapters == $completedChapters;
-
-    //         $completionCheck[] = [
-    //             'mentee_id' => $mentee_id,
-    //             'module_id' => $module->module_id,
-    //             'total_chapters' => $module->total_chapters,
-    //             'completed_chapters' => $completedChapters,
-    //             'is_completed' => $isCompleted ? 'Yes' : 'No'
-    //         ];
-    //     }
-    //         }
+    
 }

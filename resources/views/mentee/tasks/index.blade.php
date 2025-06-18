@@ -349,7 +349,7 @@
                                 <hr>
                                 <h5>Task Response</h5>
                                 <div class="form-group">
-                                    <textarea class="form-control ckeditor {{ $errors->has('task_response') ? 'is-invalid' : '' }}" name="task_response" id="task_response">{!! old('task_response') !!}</textarea>
+                                    <textarea class="form-control required ckeditor {{ $errors->has('task_response') ? 'is-invalid' : '' }}" name="task_response" id="task_response">{!! old('task_response') !!} </textarea>
                                     @if($errors->has('task_response'))
                                         <div class="invalid-feedback">
                                             {{ $errors->first('task_response') }}

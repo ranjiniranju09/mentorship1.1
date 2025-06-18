@@ -140,11 +140,16 @@ Route::prefix('mentor')->group(function() {
     Route::post('/chapter-mark-completed/{mentee_id}', [ModuleController::class, 'markChapterCompleted'])->name('chapter.markCompleted');
     Route::post('/mentor/markChapterCompletion/{moduleId}', [ModuleController::class, 'markChapterCompletion'])->name('mentor.markChapterCompletion');
     Route::post('/chapter-mark-completed', [ModuleController::class, 'markChapterCompleted'])->name('chapter.markCompleted');
-
     Route::get('/moduleList',[ModuleController::class,'moduleList'])->name('moduleList');
 
     Route::get('/quizdetails',[QuizController::class,'quizdetails'])->name('quizdetails');
     Route::get('/quizprogress', [QuizController::class, 'getQuizResults'])->name('quizprogress');
+    Route::get('/quiz/{chapter_id}', [QuizController::class, 'showmentorquiz'])->name('mentor.quiz');
+    Route::post('/discussionanswers/{id}/reply', [QuizController::class, 'storeMentorReply'])->name('discussionanswers.reply');
+    Route::get('/modulequiz', [QuizController::class, 'moduleQuizShow'])->name('quiz.modulequiz');
+    // Route::get('/modulequiz/{moduleId}', [QuizController::class, 'moduleQuizShow'])->name('quiz.modulequiz');
+
+
 
     // Route::get('/tasksindex',[TaskController::class,'index'])->name('tasks.index');
 
@@ -156,9 +161,6 @@ Route::prefix('mentor')->group(function() {
 
     // Route::get('/mentorquiz', [ModuleController::class, 'mentorquiz'])->name('mentorquiz');
 
-    Route::get('/quiz/{chapter_id}', [QuizController::class, 'showmentorquiz'])->name('mentor.quiz');
-
-    Route::post('/discussionanswers/{id}/reply', [QuizController::class, 'storeMentorReply'])->name('discussionanswers.reply');
 
 
     Route::get('/mentor/verify/{token}', [RegisterController::class, 'verifymentor'])->name('mentor.verify');
@@ -169,7 +171,12 @@ Route::prefix('mentor')->group(function() {
 
     Route::get('/certificate', [CertificateController::class, 'showmentorCertificate'])->name('mentorcertificate');
 
-    Route::get('/download', [CertificateController::class, 'download'])->name('downloadcertificate');
+    Route::get('/mentor/certificate', [CertificateController::class, 'generateCertificate'])->name('mentor.certificate');
+
+    // Route::get('/download', [CertificateController::class, 'download'])->name('downloadcertificate');
+    // Route::get('/mentor/certificate/download', [CertificateController::class, 'download'])->name('downloadcertificate');
+    Route::get('/mentor/download-certificate', [CertificateController::class, 'download'])->name('mentor.download.certificate');
+
 
 
     Route::get('/mentortickets', [SupportController::class, 'mentortickets'])->name('mentor.tickets');

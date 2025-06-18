@@ -164,12 +164,6 @@ public function showmentorquiz(Request $request, $chapter_id)
 
     $userId = $menteeUser->id;
 
-    // Fetch the maximum quiz result for the mentee in the module
-    // $maxResult = DB::table('quiz_results')
-    //     ->where('user_id', $userId)
-    //     ->where('module_id', $moduleId)
-    //     ->orderBy('score', 'desc')
-    //     ->first();
 
     $maxResult = DB::table('quiz_results')
     ->where('user_id', $userId)
@@ -178,16 +172,6 @@ public function showmentorquiz(Request $request, $chapter_id)
     ->select('score', 'attempts') // Specify the columns you want to retrieve
     ->first();
 
-
-    // Fetch discussion answers for the selected chapter and mapped mentee
-    // $discussionAnswers = DB::table('discussion_answers')
-    // ->join('questions', 'discussion_answers.question_id', '=', 'questions.id')
-    // ->join('tests', 'questions.test_id', '=', 'tests.id') // Assuming questions link to tests
-    // ->where('tests.chapter_id', $chapterId) // Use tests to filter by chapter
-    // ->where('discussion_answers.menteename_id', $mappedMentee->menteename_id)
-    // ->whereNull('discussion_answers.deleted_at') // Exclude soft-deleted answers
-    // ->select('discussion_answers.*', 'questions.question_text')
-    // ->get();
 
     // Get the discussion answers by joining discussion_answers, questions, and tests tables
     $discussionAnswers = DB::table('discussion_answers')
@@ -217,10 +201,6 @@ public function showmentorquiz(Request $request, $chapter_id)
     ->get();
 
 
-    // If no discussion answers exist, initialize an empty collection
-    // if ($discussionAnswers->isEmpty()) {
-    //     $discussionAnswers = collect();
-    // }
 
     // Return the view with the necessary data
     return view('mentor.modules.quiz', compact(
@@ -258,5 +238,44 @@ public function showmentorquiz(Request $request, $chapter_id)
         }
     }
 
+
+    public function moduleQuizShow()
+    {
+        // Get all modules
+        $modules = DB::table('modules')->get();
+
+        $moduleData = [];
+
+        foreach ($modules as $module) {
+            // Get test IDs for this module
+            $testIds = DB::table('tests')
+                ->where('module_id', $module->id)
+                ->where('is_published', true)
+                ->pluck('id');
+
+            if ($testIds->isEmpty()) continue;
+
+            // Get MCQ questions for this module where deleted_at is null
+            $questions = DB::table('questions')
+                ->whereIn('test_id', $testIds)
+                ->where('mcq', 'yes')
+                ->whereNull('deleted_at') // <-- filter out soft-deleted questions
+                ->get();
+
+            // Add options to each question
+            foreach ($questions as $question) {
+                $question->options = DB::table('question_options')
+                    ->where('question_id', $question->id)
+                    ->get();
+            }
+
+            $moduleData[] = [
+                'module' => $module,
+                'questions' => $questions
+            ];
+        }
+
+        return view('mentor.quiz.modulequiz', compact('moduleData'));
+    }
 
 }

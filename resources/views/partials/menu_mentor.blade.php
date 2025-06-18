@@ -67,6 +67,12 @@
                 Modules
             </a>
         </li>
+        <li class="c-sidebar-nav-item">
+            <a href="{{route('quiz.modulequiz')}}" class="c-sidebar-nav-link">
+            <i class="c-sidebar-nav-icon fa fa-question" ></i>
+                Modules Question & Answers 
+            </a>
+        </li>
         {{--<li class="c-sidebar-nav-item">
         <a href="{{ route('mentor.markChapterCompletion') }}" class="c-sidebar-nav-link">
             <i class="c-sidebar-nav-icon fas fa-fw fa-tachometer-alt"></i>
@@ -109,12 +115,12 @@
                 Calendar
             </a>
         </li>
-        {{--<li class="c-sidebar-nav-item">
+        <li class="c-sidebar-nav-item">
             <a href="{{ route('mentorcertificate') }}" class="c-sidebar-nav-link">
                 <i class="fa-solid fa-certificate c-sidebar-nav-icon" aria-hidden="true"></i>
                 Generate Certificate
             </a>
-        </li>--}}
+        </li>
         <li class="c-sidebar-nav-item">
             <a href="{{route('mentor.tickets')}}" class="c-sidebar-nav-link">
                 <i class="fa fa-ticket c-sidebar-nav-icon" ></i>

@@ -20,7 +20,7 @@
         margin-left: 50px;
         display: none; /* Hidden by default */
     }
-
+    
     .export-button-container {
         margin-top: 15px;
         text-align: right;
@@ -56,27 +56,35 @@
                     <tr>
                         <th>Sl. No.</th>
                         <th>Mentee</th>
-                        <th>Module</th>
-                        <th>Completed Quiz</th>
-                        <th>Pending Quiz</th>
+                        <th>Total Modules</th>
+                        <th>Completed Modules (Count)</th>
+                        <th>Completed Modules (with Scores)</th>
+                        <th>Pending Modules (Count)</th>
+                        <th>Pending Modules (Names)</th>
+                        <th>Total Attempts</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     @forelse($quizProgressData as $index => $data)
                         <tr>
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $data->mentee_name }}</td>
-                            <td>{{ $data->module_name }}</td>
-                            <td>{{ $data->completed_quiz }}</td>
-                            <td>{{ $data->pending_quiz }}</td>
+                            <td>{{ $data->total_modules }}</td>
+                            <td>{{ $data->completed_modules }}</td>
+                            <td>{{ $data->completed_module_scores ?? '—' }}</td>
+                            <td>{{ $data->pending_modules }}</td>
+                            <td>{{ $data->pending_module_names ?? '—' }}</td>
+                            <td>{{ $data->total_attempts }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center">No data available</td>
+                            <td colspan="8" class="text-center">No data available</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
+
         </div>
     </div>
 </div>

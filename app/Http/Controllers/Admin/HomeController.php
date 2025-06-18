@@ -156,28 +156,30 @@ class HomeController
             'translation_key'       => 'session',
         ];
 
-        $settings4['total_number'] = 0;
-        if (class_exists($settings4['model'])) {
-            $settings4['total_number'] = $settings4['model']::when(isset($settings4['filter_field']), function ($query) use ($settings4) {
-                if (isset($settings4['filter_days'])) {
-                    return $query->where($settings4['filter_field'], '>=',
-                        now()->subDays($settings4['filter_days'])->format('Y-m-d'));
-                } elseif (isset($settings4['filter_period'])) {
-                    switch ($settings4['filter_period']) {
-                        case 'week': $start = date('Y-m-d', strtotime('last Monday'));
-                        break;
-                        case 'month': $start = date('Y-m') . '-01';
-                        break;
-                        case 'year': $start = date('Y') . '-01-01';
-                        break;
-                    }
-                    if (isset($start)) {
-                        return $query->where($settings4['filter_field'], '>=', $start);
-                    }
-                }
-            })
-                ->{$settings4['aggregate_function'] ?? 'count'}($settings4['aggregate_field'] ?? '*');
-        }
+        $totalsession = DB::table('sessions')->count();
+
+        // $settings4['total_number'] = 0;
+        // if (class_exists($settings4['model'])) {
+        //     $settings4['total_number'] = $settings4['model']::when(isset($settings4['filter_field']), function ($query) use ($settings4) {
+        //         if (isset($settings4['filter_days'])) {
+        //             return $query->where($settings4['filter_field'], '>=',
+        //                 now()->subDays($settings4['filter_days'])->format('Y-m-d'));
+        //         } elseif (isset($settings4['filter_period'])) {
+        //             switch ($settings4['filter_period']) {
+        //                 case 'week': $start = date('Y-m-d', strtotime('last Monday'));
+        //                 break;
+        //                 case 'month': $start = date('Y-m') . '-01';
+        //                 break;
+        //                 case 'year': $start = date('Y') . '-01-01';
+        //                 break;
+        //             }
+        //             if (isset($start)) {
+        //                 return $query->where($settings4['filter_field'], '>=', $start);
+        //             }
+        //         }
+        //     })
+        //         ->{$settings4['aggregate_function'] ?? 'count'}($settings4['aggregate_field'] ?? '*');
+        // }
 
         $settings5 = [
             'chart_title'           => 'Total Guest Lectures',
@@ -234,28 +236,33 @@ class HomeController
             'translation_key'       => 'session',
         ];
 
-        $settings6['total_number'] = 0;
-        if (class_exists($settings6['model'])) {
-            $settings6['total_number'] = $settings6['model']::when(isset($settings6['filter_field']), function ($query) use ($settings6) {
-                if (isset($settings6['filter_days'])) {
-                    return $query->where($settings6['filter_field'], '>=',
-                        now()->subDays($settings6['filter_days'])->format('Y-m-d'));
-                } elseif (isset($settings6['filter_period'])) {
-                    switch ($settings6['filter_period']) {
-                        case 'week': $start = date('Y-m-d', strtotime('last Monday'));
-                        break;
-                        case 'month': $start = date('Y-m') . '-01';
-                        break;
-                        case 'year': $start = date('Y') . '-01-01';
-                        break;
-                    }
-                    if (isset($start)) {
-                        return $query->where($settings6['filter_field'], '>=', $start);
-                    }
-                }
-            })
-                ->{$settings6['aggregate_function'] ?? 'count'}($settings6['aggregate_field'] ?? '*');
-        }
+        $totalHoursEngages = DB::table('sessions')
+        ->where('done', 1) // Adjust the condition based on how 'done' is stored
+        ->sum('session_duration_minutes')/60;
+
+
+        // $settings6['total_number'] = 0;
+        // if (class_exists($settings6['model'])) {
+        //     $settings6['total_number'] = $settings6['model']::when(isset($settings6['filter_field']), function ($query) use ($settings6) {
+        //         if (isset($settings6['filter_days'])) {
+        //             return $query->where($settings6['filter_field'], '>=',
+        //                 now()->subDays($settings6['filter_days'])->format('Y-m-d'));
+        //         } elseif (isset($settings6['filter_period'])) {
+        //             switch ($settings6['filter_period']) {
+        //                 case 'week': $start = date('Y-m-d', strtotime('last Monday'));
+        //                 break;
+        //                 case 'month': $start = date('Y-m') . '-01';
+        //                 break;
+        //                 case 'year': $start = date('Y') . '-01-01';
+        //                 break;
+        //             }
+        //             if (isset($start)) {
+        //                 return $query->where($settings6['filter_field'], '>=', $start);
+        //             }
+        //         }
+        //     })
+        //         ->{$settings6['aggregate_function'] ?? 'count'}($settings6['aggregate_field'] ?? '*');
+        // }
 
         $settings7 = [
             'chart_title'           => 'Recent Sessions',
@@ -316,6 +323,6 @@ class HomeController
             ->whereNull('mappings.menteename_id')
             ->count();
 
-        return view('home', compact('chart8', 'settings1','totalMappedpairs', 'settings2', 'totalMentors', 'totalMentees', 'settings3', 'settings4', 'settings5', 'settings6', 'settings7','unmappedMentorsCount', 'unmappedMenteesCount'));
+        return view('home', compact('chart8', 'settings1','totalMappedpairs','totalHoursEngages', 'settings2', 'totalMentors', 'totalMentees','totalsession', 'settings3', 'settings4', 'settings5', 'settings6', 'settings7','unmappedMentorsCount', 'unmappedMenteesCount'));
     }
 }

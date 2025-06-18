@@ -65,7 +65,7 @@
                         <div class="{{ $settings4['column_class'] }}">
                             <div class="card text-white bg-primary">
                                 <div class="card-body pb-0">
-                                    <div class="text-value">{{ number_format($settings4['total_number']) }}</div>
+                                    <div class="text-value">{{ number_format($totalsession) }}</div>
                                     <div>{{ $settings4['chart_title'] }}</div>
                                     <br />
                                 </div>
@@ -83,7 +83,7 @@
                         <div class="{{ $settings6['column_class'] }}">
                             <div class="card text-white bg-primary">
                                 <div class="card-body pb-0">
-                                    <div class="text-value">{{ number_format($settings6['total_number']) }}</div>
+                                    <div class="text-value">{{ number_format($totalHoursEngages) }}</div>
                                     <div>{{ $settings6['chart_title'] }}</div>
                                     <br />
                                 </div>

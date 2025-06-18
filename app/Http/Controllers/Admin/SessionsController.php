@@ -79,6 +79,9 @@ class SessionsController extends Controller
         $modules = Module::get();
         $mentors = Mentor::get();
         $mentees = Mentee::get();
+        
+
+
 
         return view('admin.sessions.index', compact('modules', 'mentors', 'mentees'));
     }

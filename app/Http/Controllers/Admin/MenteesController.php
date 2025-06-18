@@ -56,9 +56,9 @@ class MenteesController extends Controller
             $table->editColumn('mobile', function ($row) {
                 return $row->mobile ? $row->mobile : '';
             });
-
+            
             $table->editColumn('skills', function ($row) {
-                return $row->skilss ? $row->skilss : '';
+                return $row->skills ? $row->skills : '';
             });
             $table->editColumn('interestedskills', function ($row) {
                 return $row->interestedskills ? $row->interestedskills : '';

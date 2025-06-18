@@ -1,0 +1,22 @@
+{
+    "font awesome 6 brands": {
+        "normal": "font_awesome_6_brands_normal_31636509732b4298588040c87c3592c6"
+    },
+    "font awesome 6 free": {
+        "normal": "C:\\xampp\\htdocs\\mentorshipnew\\storage\\fonts\/font_awesome_6_free_normal_1321bfcfa727e01fd6f51a5f5864a82b",
+        "900": "font_awesome_6_free_900_a4b7023c0a078a27002a27fd500f100e"
+    },
+    "font awesome 5 brands": {
+        "normal": "font_awesome_5_brands_normal_31636509732b4298588040c87c3592c6"
+    },
+    "font awesome 5 free": {
+        "900": "C:\\xampp\\htdocs\\mentorshipnew\\storage\\fonts\/font_awesome_5_free_900_a4b7023c0a078a27002a27fd500f100e",
+        "normal": "font_awesome_5_free_normal_1321bfcfa727e01fd6f51a5f5864a82b"
+    },
+    "fontawesome": {
+        "normal": "fontawesome_normal_98ba43c5288785d68524e2de74fccc87"
+    },
+    "open sans": {
+        "normal": "open_sans_normal_2bf6e8a03908d49a7fa7b1094b0c2804"
+    }
+}

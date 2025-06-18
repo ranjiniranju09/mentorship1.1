@@ -31,7 +31,6 @@
                 @csrf
                 <div class="modal-body">
                     @php
-                        $firstAssignment = $assignments->first();
                         $defaultMentorId = $firstAssignment->mentorname_id ?? '';
                         $defaultMenteeId = $firstAssignment->menteename_id ?? '';
                         $defaultMentor = $mentornames[$defaultMentorId] ?? '';

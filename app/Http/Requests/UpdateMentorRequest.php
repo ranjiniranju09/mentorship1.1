@@ -27,9 +27,9 @@ class UpdateMentorRequest extends FormRequest
             ],
             'mobile' => [
                 'required',
-                'integer',
-                'min:-2147483648',
-                'max:2147483647',
+                'numeric',
+                'min:1000000000',  // Minimum 10-digit number (adjust as needed)
+                'max:9223372036854775807', // Maximum BIGINT value
                 'unique:mentors,mobile,' . request()->route('mentor')->id,
             ],
             'companyname' => [

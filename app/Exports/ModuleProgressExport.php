@@ -16,40 +16,59 @@ class ModuleProgressExport implements FromCollection, WithStyles
     {
         
         // Fetch progress data and session duration for each mentor
-        $data = DB::table('modules')
-            ->join('module_completion_tracker', 'modules.id', '=', 'module_completion_tracker.module_id')
-            ->join('mentees', 'module_completion_tracker.mentee_id', '=', 'mentees.id')
-            ->join('mentors', 'module_completion_tracker.user_id', '=', 'mentors.user_id')
-            // Join the sessions table to get total session duration for each mentor
-            ->leftJoin('sessions', 'mentors.id', '=', 'sessions.mentorname_id')
+         $data = DB::table('mentees')
+            // Only include mapped mentees
+            ->join('mappings', 'mentees.id', '=', 'mappings.menteename_id')
+
+            // Join mentors using mapping
+            ->join('mentors', 'mappings.mentorname_id', '=', 'mentors.id')
+
+            // Join module completion tracker
+            ->leftJoin('module_completion_tracker', 'mentees.id', '=', 'module_completion_tracker.mentee_id')
+
+            // Join sessions for the mapped mentor
+            ->leftJoin('sessions', function($join) {
+                $join->on('mentors.id', '=', 'sessions.mentorname_id')
+                    ->where('sessions.done', '=', 1);
+            })
+
             ->select(
-                'modules.id as module_id',
-                'modules.name as module_name',
+                'mentees.id as mentee_id',
                 'mentees.name as mentee_name',
                 'mentors.name as mentor_name',
+
+                // Count of completed modules
                 DB::raw('COUNT(DISTINCT module_completion_tracker.module_id) as total_completed_modules'),
-                DB::raw('COALESCE((SELECT GROUP_CONCAT(modules.name) 
-                    FROM modules 
-                    JOIN module_completion_tracker 
-                    ON modules.id = module_completion_tracker.module_id 
-                    WHERE module_completion_tracker.mentee_id = mentees.id 
-                    GROUP BY mentees.id), "None") as completed_modules_names'),
-                DB::raw('(SELECT COUNT(*) 
-                    FROM modules 
-                    WHERE modules.id NOT IN 
-                    (SELECT module_id FROM module_completion_tracker 
-                    WHERE mentee_id = module_completion_tracker.mentee_id)) as total_pending_modules'),
-                DB::raw('(SELECT GROUP_CONCAT(modules.name) 
-                    FROM modules 
-                    WHERE modules.id NOT IN 
-                    (SELECT module_id FROM module_completion_tracker 
-                    WHERE mentee_id = module_completion_tracker.mentee_id)) as pending_modules_names'),
-                // Calculate total session time in hours for each mentor
+
+                // Pending modules = total - completed
+                DB::raw('(SELECT COUNT(*) FROM modules) - COUNT(DISTINCT module_completion_tracker.module_id) as total_pending_modules'),
+
+                // Completed module names
+                DB::raw('(
+                    SELECT GROUP_CONCAT(DISTINCT m.name)
+                    FROM modules m
+                    JOIN module_completion_tracker mct ON m.id = mct.module_id
+                    WHERE mct.mentee_id = mentees.id
+                ) as completed_modules_names'),
+
+                // Pending module names
+                DB::raw('(
+                    SELECT GROUP_CONCAT(name)
+                    FROM modules
+                    WHERE id NOT IN (
+                        SELECT module_id 
+                        FROM module_completion_tracker 
+                        WHERE mentee_id = mentees.id
+                    )
+                ) as pending_modules_names'),
+
+                // Total mentor session time in hours
                 DB::raw('SUM(sessions.session_duration_minutes) / 60 as total_hours_engaged')
             )
-            ->groupBy('modules.id', 'mentees.id', 'mentors.id')
+
+            ->groupBy('mentees.id', 'mentees.name', 'mentors.name')
             ->get();
-    
+
         // Map data for export
         $dataWithSerial = $data->map(function ($item, $index) {
             return [
@@ -60,9 +79,10 @@ class ModuleProgressExport implements FromCollection, WithStyles
                 'completed_modules_names' => $item->completed_modules_names ?? 'None',
                 'total_pending_modules' => $item->total_pending_modules ?? 0,
                 'pending_modules_names' => $item->pending_modules_names ?? 'None',
-                'total_hours_engaged' => $item->total_hours_engaged ?? 0  // Add total hours engaged
+                'total_hours_engaged' => $item->total_hours_engaged ?? 0
             ];
         });
+
     
         // Header
         $header = [

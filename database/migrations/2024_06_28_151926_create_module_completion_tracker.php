@@ -15,9 +15,9 @@ class CreateModuleCompletionTracker extends Migration
     {
         Schema::create('module_completion_tracker', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->unsignedBigInteger('mentee_id')->nullable();
             $table->unsignedBigInteger('module_id')->nullable();
-            $table->unsignedBigInteger('chapter_id')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
                         

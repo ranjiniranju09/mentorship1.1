@@ -41,15 +41,17 @@
 </head>
 <body>
     <div class="email-container">
-        <h2>New Session Created</h2>
+        <h2>New Session Organised by Mentor</h2>
         
-        <p>Hello,</p>
-        <p>A new session has been created with the following details:</p>
+        <p>Hello, {{ $session->menteename }}</p>
+        <p>A new session has been Scheduled with the following details:</p>
         
         <ul>
-            <li><strong>Title:</strong> {{ $session->session_title }}</li>
-            <li><strong>Date and Time:</strong> {{ $session->sessiondatetime }}</li>
-            <!-- Add more session details here if needed -->
+            <li><strong>Module:</strong> {{ $session->modulename }}</li>
+            <li><strong>Date & Time:</strong> {{ $session->sessiondatetime }}</li>
+            <li><strong>Session Link:</strong> <a href="{{ $session->sessionlink }}" target="_blank">{{ $session->sessionlink }}</a></li>
+            <li><strong>Session Title:</strong> {{ $session->session_title }}</li>
+            <li><strong>Session Duration:</strong> {{ $session->session_duration_minutes }} minutes</li>
         </ul>
 
         <p>Thank you for your participation!</p>

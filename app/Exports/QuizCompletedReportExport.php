@@ -6,42 +6,56 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
-class QuizCompletionReportExport implements FromCollection, WithHeadings
+class QuizCompletedReportExport implements FromCollection, WithHeadings
 {
     public function collection()
     {
-        // Updated query for mentee quiz progress, including MCQ question checks and pending quizzes logic
-        return DB::table('modules')
-            ->leftJoin('quiz_results', 'modules.id', '=', 'quiz_results.module_id')
-            ->leftJoin('questions', 'quiz_results.tests_id', '=', 'questions.test_id')
-            ->leftJoin('mappings', function ($join) {
-                $join->on('mappings.mentorname_id', '=', 'quiz_results.user_id')
-                    ->orOn('mappings.menteename_id', '=', 'quiz_results.user_id');
-            })
-            ->leftJoin('mentors', 'mappings.mentorname_id', '=', 'mentors.id')
-            ->leftJoin('mentees', 'mappings.menteename_id', '=', 'mentees.id')
-            ->select(
-                'mentees.name as mentee_name',
-                'modules.name as module_name',
-                DB::raw('COUNT(DISTINCT questions.id) as total_questions'),
-                DB::raw('COUNT(DISTINCT quiz_results.tests_id) as completed_quiz'),
-                DB::raw('(1 - COUNT(DISTINCT quiz_results.tests_id)) as pending_quiz') // Assuming 1 test per module
-            )
-            ->where(function ($query) {
-                $query->where('questions.mcq', 'yes')
-                    ->orWhereNull('questions.id'); // Include modules without questions
-            })
-            ->groupBy('modules.id', 'modules.name', 'mentees.id', 'mentees.name')
-            ->get()
-            ->map(function ($row, $index) {
-                return [
-                    'Sl. No.' => $index + 1,
-                    'Mentee Name' => $row->mentee_name,
-                    'Module Name' => $row->module_name,
-                    'Completed Quiz' => $row->completed_quiz,
-                    'Pending Quiz' => $row->pending_quiz,
-                ];
-            });
+        $data = DB::select("
+            SELECT 
+                mentees.id AS mentee_id,
+                mentees.name AS mentee_name,
+                mentees.user_id AS mentee_user_id,
+
+                (SELECT COUNT(*) FROM modules) AS total_modules,
+                COUNT(DISTINCT quiz_results.module_id) AS completed_modules,
+                ((SELECT COUNT(*) FROM modules) - COUNT(DISTINCT quiz_results.module_id)) AS pending_modules,
+
+                GROUP_CONCAT(DISTINCT CONCAT(completed_modules.name, ' (Score: ', quiz_results.score, ')') SEPARATOR ', ') AS completed_module_scores,
+
+                (
+                    SELECT GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ')
+                    FROM modules m
+                    WHERE m.id NOT IN (
+                        SELECT module_id
+                        FROM quiz_results
+                        WHERE user_id = mentees.user_id
+                    )
+                ) AS pending_module_names,
+
+                COALESCE(SUM(quiz_results.attempts), 0) AS total_attempts
+
+            FROM mentees
+            LEFT JOIN mappings ON mappings.menteename_id = mentees.id
+            LEFT JOIN quiz_results ON quiz_results.user_id = mentees.user_id
+            LEFT JOIN modules AS completed_modules ON completed_modules.id = quiz_results.module_id
+
+            GROUP BY mentees.id, mentees.name, mentees.user_id
+            ORDER BY mentees.name
+        ");
+
+        // Map data to expected export format
+        return collect($data)->map(function ($row, $index) {
+            return [
+                'Sl. No.' => $index + 1,
+                'Mentee Name' => $row->mentee_name,
+                'Total Modules' => $row->total_modules,
+                'Completed Modules (Count)' => $row->completed_modules,
+                'Completed Modules (with Scores)' => $row->completed_module_scores ?: '—',
+                'Pending Modules (Count)' => $row->pending_modules,
+                'Pending Modules (Names)' => $row->pending_module_names ?: '—',
+                'Total Attempts' => $row->total_attempts,
+            ];
+        });
     }
 
     public function headings(): array
@@ -49,9 +63,12 @@ class QuizCompletionReportExport implements FromCollection, WithHeadings
         return [
             'Sl. No.',
             'Mentee Name',
-            'Module Name',
-            'Completed Quiz',
-            'Pending Quiz',
+            'Total Modules',
+            'Completed Modules (Count)',
+            'Completed Modules (with Scores)',
+            'Pending Modules (Count)',
+            'Pending Modules (Names)',
+            'Total Attempts',
         ];
     }
 }

@@ -27,15 +27,15 @@ class StoreMenteeRequest extends FormRequest
             ],
             'mobile' => [
                 'required',
-                'integer',
-                'min:-2147483648',
-                'max:2147483647',
+                'numeric',
+                'min:1000000000',  // Minimum 10-digit number (adjust as needed)
+                'max:9223372036854775807', // Maximum BIGINT value
             ],
             'dob' => [
                 'date_format:' . config('panel.date_format'),
                 'nullable',
             ],
-            'skilss' => [
+            'skills' => [
                 'string',
                 'nullable',
             ],

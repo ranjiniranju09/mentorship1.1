@@ -97,9 +97,9 @@ class RegisterController extends Controller
     $password = $request->input('password');
 
     // Check if mobile number already exists in the mentors table
-    $existingMentor = DB::table('mentors')->where('mobile', $mobile)->exists();
+    $existingMentor = DB::table('mentees')->where('mobile', $mobile)->exists();
     if ($existingMentor) {
-        return redirect()->back()->with('error', 'Mobile number is already registered as a mentor.');
+        return redirect()->back()->with('error', 'Mobile number is already registered as a Mentees.');
     }
 
     DB::beginTransaction();
@@ -141,8 +141,8 @@ class RegisterController extends Controller
         // Generate a token
         $token = Str::random(64);
 
-        // Set token expiration time (60 minutes from now)
-        $expiresAt = now()->addMinutes(60);
+        // Set token expiration time (48 hours from now)
+        $expiresAt = now()->addHours(48);
 
         // Insert the token into the email_verifications table with expiration time
         DB::table('email_verifications')->insert([
@@ -231,7 +231,7 @@ class RegisterController extends Controller
             $token = Str::random(64);
     
             // Set token expiration time (e.g., 24 hours from now)
-            $expiration = now()->addHours(24);
+            $expiration = now()->addHours(48);
     
             // Insert the token into the email_verifications table with expiration time
             DB::table('email_verifications')->insert([

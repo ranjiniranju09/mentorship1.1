@@ -27,9 +27,8 @@ class StoreMentorRequest extends FormRequest
             ],
             'mobile' => [
                 'required',
-                'integer',
-                'min:-2147483648',
-                'max:2147483647',
+                'numeric',
+                'digits_between:1,15',
                 'unique:mentors,mobile',
             ],
             'companyname' => [

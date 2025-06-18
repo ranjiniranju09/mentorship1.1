@@ -22,36 +22,65 @@ use Illuminate\Http\Request;
 class ProgressDataController extends Controller
 {
 
-    public function getModuleProgressData()
+    public function getModuleProgressData() // overallmoduleprogress
     {
         try {
             DB::beginTransaction();
 
-            $moduleProgressQuery = DB::table('modules')
-    ->join('module_completion_tracker', 'modules.id', '=', 'module_completion_tracker.module_id')
-    ->join('mentees', 'module_completion_tracker.mentee_id', '=', 'mentees.id')
-    ->join('mentors', 'module_completion_tracker.user_id', '=', 'mentors.user_id')
-    // Join the sessions table to get total session duration for each mentor
-    ->leftJoin('sessions', 'mentors.id', '=', 'sessions.mentorname_id')
-    ->select(
-        'modules.id as module_id',
-        'modules.name as module_name',
-        'mentees.name as mentee_name',
-        'mentors.name as mentor_name',
-        DB::raw('count(DISTINCT module_completion_tracker.module_id) as total_completed_modules'),
-        DB::raw('(SELECT count(*) FROM modules WHERE modules.id NOT IN (SELECT module_id FROM module_completion_tracker WHERE mentee_id = module_completion_tracker.mentee_id)) as total_pending_modules'),
-        DB::raw('(SELECT GROUP_CONCAT(modules.name) FROM modules JOIN module_completion_tracker ON modules.id = module_completion_tracker.module_id WHERE module_completion_tracker.mentee_id = mentees.id GROUP BY mentees.id) as completed_modules_names'),
-        DB::raw('(SELECT GROUP_CONCAT(modules.name) FROM modules WHERE modules.id NOT IN (SELECT module_id FROM module_completion_tracker WHERE mentee_id = module_completion_tracker.mentee_id)) as pending_modules_names'),
-        // Calculate total session time in hours for each mentor
-        DB::raw('SUM(sessions.session_duration_minutes) / 60 as total_hours_engaged')
-    )
-    ->groupBy('modules.id', 'mentees.id', 'mentors.id');
+            $moduleProgressQuery = DB::table('mentees')
+                // Only include mapped mentees
+                ->join('mappings', 'mentees.id', '=', 'mappings.menteename_id')
 
+                // Join mentors using mapping
+                ->join('mentors', 'mappings.mentorname_id', '=', 'mentors.id')
+
+                // Join module completion tracker
+                ->leftJoin('module_completion_tracker', 'mentees.id', '=', 'module_completion_tracker.mentee_id')
+
+                // Join sessions for the mapped mentor (still can be left join in case sessions not done yet)
+                ->leftJoin('sessions', function($join) {
+                    $join->on('mentors.id', '=', 'sessions.mentorname_id')
+                        ->where('sessions.done', '=', 1);
+                })
+
+                ->select(
+                    'mentees.id as mentee_id',
+                    'mentees.name as mentee_name',
+                    'mentors.name as mentor_name',
+
+                    // Count of completed modules
+                    DB::raw('COUNT(DISTINCT module_completion_tracker.module_id) as total_completed_modules'),
+
+                    // Pending modules = total - completed
+                    DB::raw('(SELECT COUNT(*) FROM modules) - COUNT(DISTINCT module_completion_tracker.module_id) as total_pending_modules'),
+
+                    // Completed module names
+                    DB::raw('(
+                        SELECT GROUP_CONCAT(DISTINCT m.name)
+                        FROM modules m
+                        JOIN module_completion_tracker mct ON m.id = mct.module_id
+                        WHERE mct.mentee_id = mentees.id
+                    ) as completed_modules_names'),
+
+                    // Pending module names
+                    DB::raw('(
+                        SELECT GROUP_CONCAT(name)
+                        FROM modules
+                        WHERE id NOT IN (
+                            SELECT module_id 
+                            FROM module_completion_tracker 
+                            WHERE mentee_id = mentees.id
+                        )
+                    ) as pending_modules_names'),
+
+                    // Total mentor session time in hours
+                    DB::raw('SUM(sessions.session_duration_minutes) / 60 as total_hours_engaged')
+                )
+
+                ->groupBy('mentees.id', 'mentees.name', 'mentors.name');
 
             $moduleProgressData = $moduleProgressQuery->get();
 
-
-                // return $moduleProgressQuery;
             DB::commit();
 
             return view('admin.progressData.masterdata', compact('moduleProgressData'));
@@ -62,6 +91,7 @@ class ProgressDataController extends Controller
             return redirect()->back()->withErrors(['error' => 'Failed to load module progress. Please try again.']);
         }
     }
+
 
 
     public function exportModuleProgress()
@@ -79,48 +109,6 @@ class ProgressDataController extends Controller
         }
     }
     
-
-
-    
-    // public function getModuleProgress() {
-    //     // Fetch all modules
-    //     $modules = Module::all();
-    
-    //     $moduleProgressData = [];
-    
-    //     foreach ($modules as $module) {
-    //         // Get chapters for the current module
-    //         $chapters = Chapter::where('module_id', $module->id)->get();
-    
-    //         // Count total mentees
-    //         $totalMentees = Mentee::count();
-    
-    //         // Track completed and pending mentees
-    //         $completedMentees = 0;
-    
-    //         foreach (Mentee::all() as $mentee) {
-    //             $completedChapters = ModuleCompletionTracker::where('mentee_id', $mentee->id)
-    //                 ->whereIn('chapter_id', $chapters->pluck('id'))
-    //                 ->count();
-    
-    //             if ($completedChapters == $chapters->count()) {
-    //                 $completedMentees++;
-    //             }
-    //         }
-    
-    //         $pendingMentees = $totalMentees - $completedMentees;
-    
-    //         // Add module data
-    //         $moduleProgressData[] = [
-    //             'module' => $module,
-    //             'chapters' => $chapters,
-    //             'completedMentees' => $completedMentees,
-    //             'pendingMentees' => $pendingMentees,
-    //         ];
-    //     }
-    
-    //     return view('progress.module_progress', ['moduleProgressData' => $moduleProgressData]);
-    // }
     
     public function modulereport() {
         
@@ -178,29 +166,61 @@ class ProgressDataController extends Controller
     public function mastersessionprogress() {
 
         $sessionProgressData = DB::table('mentors')
-            ->leftJoin('module_completion_tracker', 'mentors.user_id', '=', 'module_completion_tracker.user_id')
-            ->leftJoin('modules', 'module_completion_tracker.module_id', '=', 'modules.id')
-            ->leftJoin('sessions', function ($join) {
-                $join->on('mentors.id', '=', 'sessions.mentorname_id')
-                    ->where('sessions.done', '=', 1); // Filter sessions where done = 1
-            })
-            ->select(
-                'mentors.name as mentor_name',
-                DB::raw('(SELECT GROUP_CONCAT(modules.name) 
-                        FROM modules 
-                        JOIN module_completion_tracker 
-                        ON modules.id = module_completion_tracker.module_id 
-                        WHERE module_completion_tracker.user_id = mentors.user_id) as completed_modules_names'),
-                DB::raw('(SELECT GROUP_CONCAT(modules.name) 
-                        FROM modules 
-                        WHERE modules.id NOT IN 
-                        (SELECT module_id 
-                        FROM module_completion_tracker 
-                        WHERE user_id = mentors.user_id)) as pending_modules_names'),
-                DB::raw('COALESCE(SUM(sessions.session_duration_minutes) / 60, 0) as total_hours_engaged') // Aggregate only sessions where done = 1
+    // Only include mentors that are mapped to at least one mentee
+    ->join('mappings', 'mentors.id', '=', 'mappings.mentorname_id')
+
+    // Optional: join mentees (if you want to group mentee data too)
+    ->join('mentees', 'mappings.menteename_id', '=', 'mentees.id')
+
+    // Join module completion tracker by mentee
+    ->leftJoin('module_completion_tracker', 'mentees.id', '=', 'module_completion_tracker.mentee_id')
+
+    // Join modules
+    ->leftJoin('modules', 'module_completion_tracker.module_id', '=', 'modules.id')
+
+    // Join sessions where session is done
+    ->leftJoin('sessions', function ($join) {
+        $join->on('mentors.id', '=', 'sessions.mentorname_id')
+             ->where('sessions.done', '=', 1);
+    })
+
+    ->select(
+        'mentors.name as mentor_name',
+
+        // Completed modules by mapped mentees
+        DB::raw('(
+            SELECT GROUP_CONCAT(DISTINCT m.name)
+            FROM modules m
+            JOIN module_completion_tracker mct ON m.id = mct.module_id
+            WHERE mct.mentee_id IN (
+                SELECT menteename_id
+                FROM mappings
+                WHERE mentorname_id = mentors.id
             )
-            ->groupBy('mentors.id')
-            ->get();
+        ) as completed_modules_names'),
+
+        // Pending modules (i.e., all modules not yet completed by mapped mentees)
+        DB::raw('(
+            SELECT GROUP_CONCAT(name)
+            FROM modules
+            WHERE id NOT IN (
+                SELECT module_id
+                FROM module_completion_tracker
+                WHERE mentee_id IN (
+                    SELECT menteename_id
+                    FROM mappings
+                    WHERE mentorname_id = mentors.id
+                )
+            )
+        ) as pending_modules_names'),
+
+        // Total session time for each mapped mentor
+        DB::raw('COALESCE(SUM(sessions.session_duration_minutes) / 60, 0) as total_hours_engaged')
+    )
+
+    ->groupBy('mentors.id', 'mentors.name')
+    ->get();
+
 
 
         return view('admin.progressData.mastersessionreport', compact('sessionProgressData'));
@@ -221,21 +241,28 @@ class ProgressDataController extends Controller
         }
     }
     public function mentorwiseModuleStatus()
-{
-    $sessionProgressData = DB::table('mentors')
+    {
+        $sessionProgressData = DB::table('mentors')
+        // Only include mentors who are mapped
+        ->join('mappings', 'mentors.id', '=', 'mappings.mentorname_id')
+
+        // Join sessions and modules
         ->leftJoin('sessions', 'mentors.id', '=', 'sessions.mentorname_id')
         ->leftJoin('modules', 'sessions.modulename_id', '=', 'modules.id')
+
         ->select(
             'mentors.name as mentor_name',
-            'modules.name as module_name', // Include module_name in the query
+            'modules.name as module_name', // Include module name
             DB::raw('COUNT(CASE WHEN sessions.done = 1 THEN 1 END) as completed_sessions_count'),
             DB::raw('COUNT(CASE WHEN sessions.done = 0 THEN 1 END) as pending_sessions_count')
         )
-        ->groupBy('mentors.id', 'mentors.name', 'modules.name') // Group by module_name as well
+
+        ->groupBy('mentors.id', 'mentors.name', 'modules.name')
         ->get();
-    
-    return view('admin.progressData.mentorwisesessionreport', compact('sessionProgressData'));
-}
+
+        
+        return view('admin.progressData.mentorwisesessionreport', compact('sessionProgressData'));
+    }
 
     
     public function exportMentorwiseModuleStatus()
@@ -260,33 +287,97 @@ class ProgressDataController extends Controller
         
         try {
 
-            $quizProgressData = DB::table('modules')
-            ->leftJoin('quiz_results', 'modules.id', '=', 'quiz_results.module_id')
-            ->leftJoin('questions', 'quiz_results.tests_id', '=', 'questions.test_id')
-            ->leftJoin('mappings', function ($join) {
-                $join->on('mappings.mentorname_id', '=', 'quiz_results.user_id')
-                     ->orOn('mappings.menteename_id', '=', 'quiz_results.user_id');
-            })
-            ->leftJoin('mentors', 'mappings.mentorname_id', '=', 'mentors.id')
-            ->leftJoin('mentees', 'mappings.menteename_id', '=', 'mentees.id')
-            ->select(
-                'modules.name as module_name',
-                'mentors.name as mentor_name',
-                'mentees.name as mentee_name',
-                DB::raw('COUNT(DISTINCT questions.id) as total_questions'),
-                DB::raw('COUNT(DISTINCT quiz_results.tests_id) as completed_quiz'), // Count of unique completed quizzes
-                DB::raw('(1 - COUNT(DISTINCT quiz_results.tests_id)) as pending_quiz') // Assuming 1 test per module
+            //with total score of all the modules 
+        //    $quizProgressData = DB::select("
+        //     SELECT 
+        //         mentees.id AS mentee_id,
+        //         mentees.name AS mentee_name,
+
+        //         -- Total modules
+        //         (SELECT COUNT(*) FROM modules) AS total_modules,
+
+        //         -- Completed modules count
+        //         COUNT(DISTINCT quiz_results.module_id) AS completed_modules,
+
+        //         -- Pending modules count
+        //         ((SELECT COUNT(*) FROM modules) - COUNT(DISTINCT quiz_results.module_id)) AS pending_modules,
+
+        //         -- Completed module names
+        //         GROUP_CONCAT(DISTINCT completed_modules.name SEPARATOR ', ') AS completed_module_names,
+
+        //         -- Pending module names
+        //         (
+        //             SELECT GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ')
+        //             FROM modules m
+        //             WHERE m.id NOT IN (
+        //                 SELECT module_id
+        //                 FROM quiz_results
+        //                 WHERE user_id = mentees.user_id
+        //             )
+        //         ) AS pending_module_names,
+
+        //         -- Total score and attempts
+        //         COALESCE(SUM(quiz_results.score), 0) AS total_score,
+        //         COALESCE(SUM(quiz_results.attempts), 0) AS total_attempts
+
+        //     FROM mentees
+
+        //     -- Only mapped mentees
+        //     LEFT JOIN mappings ON mappings.menteename_id = mentees.id
+
+        //     -- Join quiz results for this mentee
+        //     LEFT JOIN quiz_results ON quiz_results.user_id = mentees.user_id
+
+        //     -- Join completed modules to get their names
+        //     LEFT JOIN modules AS completed_modules ON completed_modules.id = quiz_results.module_id
+
+        //     GROUP BY mentees.id, mentees.name, mentees.user_id
+        //     ORDER BY mentees.name
+        // ");
+
+
+        //with score for each modules 
+        $quizProgressData = DB::select("
+    SELECT 
+        mentees.id AS mentee_id,
+        mentees.name AS mentee_name,
+        mentees.user_id AS mentee_user_id,
+
+        (SELECT COUNT(*) FROM modules) AS total_modules,
+        COUNT(DISTINCT quiz_results.module_id) AS completed_modules,
+        ((SELECT COUNT(*) FROM modules) - COUNT(DISTINCT quiz_results.module_id)) AS pending_modules,
+
+        GROUP_CONCAT(DISTINCT CONCAT(completed_modules.name, ' (Score: ', quiz_results.score, ')') SEPARATOR ', ') AS completed_module_scores,
+
+        (
+            SELECT GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ')
+            FROM modules m
+            WHERE m.id NOT IN (
+                SELECT module_id
+                FROM quiz_results
+                WHERE user_id = mentees.user_id
             )
-            ->where(function ($query) {
-                $query->where('questions.mcq', 'yes')
-                      ->orWhereNull('questions.id'); // Include modules without questions
-            })
-            ->groupBy('modules.id', 'modules.name', 'mentors.name', 'mentees.name')
-            ->get();
-        
+        ) AS pending_module_names,
+
+        COALESCE(SUM(quiz_results.attempts), 0) AS total_attempts
+
+    FROM mentees
+    LEFT JOIN mappings ON mappings.menteename_id = mentees.id
+    LEFT JOIN quiz_results ON quiz_results.user_id = mentees.user_id
+    LEFT JOIN modules AS completed_modules ON completed_modules.id = quiz_results.module_id
+
+    GROUP BY mentees.id, mentees.name, mentees.user_id
+    ORDER BY mentees.name
+");
 
 
-        
+
+            // Log the fetched data for debugging
+            // logger()->info('Quiz Progress Data:', ['data' => $quizProgressData]);
+
+            // Return the view with the quiz progress data
+
+
 
         // return $quizProgressData;
 
@@ -311,7 +402,7 @@ class ProgressDataController extends Controller
     {
         try {
             // Initiate the Excel download
-            return Excel::download(new QuizCompletedReportExport, 'Quiz_Completed_Report_' . now()->format('Y-m-d_H-i-s') . '.xlsx');
+            return Excel::download(new QuizCompletedReportExport, 'Quiz_Completed_Report.xlsx');
         } catch (\Throwable $e) {
             // Log the error with detailed information
             logger()->error('Error exporting quiz completed report:', [

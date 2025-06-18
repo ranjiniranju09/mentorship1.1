@@ -15,33 +15,64 @@ class MasterSessionExport implements FromCollection, WithHeadings, WithMapping
      * @return \Illuminate\Support\Collection
      */
     public function collection()
-    {
-        return DB::table('mentors')
-    ->leftJoin('module_completion_tracker', 'mentors.user_id', '=', 'module_completion_tracker.user_id')
-    ->leftJoin('modules', 'module_completion_tracker.module_id', '=', 'modules.id')
-    ->leftJoin('sessions', function ($join) {
-        $join->on('mentors.id', '=', 'sessions.mentorname_id')
-             ->where('sessions.done', '=', 1); // Filter sessions where done = 1
-    })
-    ->select(
-        'mentors.name as mentor_name',
-        DB::raw('(SELECT GROUP_CONCAT(modules.name) 
-                  FROM modules 
-                  JOIN module_completion_tracker 
-                  ON modules.id = module_completion_tracker.module_id 
-                  WHERE module_completion_tracker.user_id = mentors.user_id) as completed_modules_names'),
-        DB::raw('(SELECT GROUP_CONCAT(modules.name) 
-                  FROM modules 
-                  WHERE modules.id NOT IN 
-                  (SELECT module_id 
-                   FROM module_completion_tracker 
-                   WHERE user_id = mentors.user_id)) as pending_modules_names'),
-        DB::raw('COALESCE(SUM(sessions.session_duration_minutes) / 60, 0) as total_hours_engaged') // Aggregate only sessions where done = 1
-    )
-    ->groupBy('mentors.id')
-    ->get();
+{
+    return DB::table('mentors')
+        // Join mappings to include only mapped mentors
+        ->join('mappings', 'mentors.id', '=', 'mappings.mentorname_id')
 
-    }
+        // Join mentees through mappings
+        ->join('mentees', 'mappings.menteename_id', '=', 'mentees.id')
+
+        // Join module completion tracker using mentee ID
+        ->leftJoin('module_completion_tracker', 'mentees.id', '=', 'module_completion_tracker.mentee_id')
+
+        // Join modules
+        ->leftJoin('modules', 'module_completion_tracker.module_id', '=', 'modules.id')
+
+        // Join sessions where 'done' is true
+        ->leftJoin('sessions', function ($join) {
+            $join->on('mentors.id', '=', 'sessions.mentorname_id')
+                ->where('sessions.done', '=', 1);
+        })
+
+        ->select(
+            'mentors.name as mentor_name',
+
+            // Completed modules by mapped mentees
+            DB::raw('(
+                SELECT GROUP_CONCAT(DISTINCT m.name)
+                FROM modules m
+                JOIN module_completion_tracker mct ON m.id = mct.module_id
+                WHERE mct.mentee_id IN (
+                    SELECT menteename_id
+                    FROM mappings
+                    WHERE mentorname_id = mentors.id
+                )
+            ) as completed_modules_names'),
+
+            // Pending modules for the mapped mentees
+            DB::raw('(
+                SELECT GROUP_CONCAT(name)
+                FROM modules
+                WHERE id NOT IN (
+                    SELECT module_id
+                    FROM module_completion_tracker
+                    WHERE mentee_id IN (
+                        SELECT menteename_id
+                        FROM mappings
+                        WHERE mentorname_id = mentors.id
+                    )
+                )
+            ) as pending_modules_names'),
+
+            // Total session hours where 'done' is 1
+            DB::raw('COALESCE(SUM(sessions.session_duration_minutes) / 60, 0) as total_hours_engaged')
+        )
+
+        ->groupBy('mentors.id', 'mentors.name')
+        ->get();
+}
+
 
     /**
      * Define the headings for the exported file.

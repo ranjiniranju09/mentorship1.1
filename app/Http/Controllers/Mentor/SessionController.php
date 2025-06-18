@@ -14,7 +14,7 @@ use App\Session;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Auth;
 
 use App\Mail\SessionCreatedMentor;
 use App\Mail\SessionCreatedMentee;
@@ -23,75 +23,120 @@ class SessionController extends Controller
 {
     //
     public function index()
-{
-    // Fetch module names
-    $modulenames = Module::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
+    {
+        // Get the logged-in user ID
+        $userId = Auth::id();
+    
+        // Check if the user is a mentor
+        $mentor = DB::table('mentors')->where('user_id', $userId)->first();
+    
+        // Check if the user is a mentee
+        $mentee = DB::table('mentees')->where('user_id', $userId)->first();
+    
+        // Initialize variables
+        $mentorId = null;
+        $menteeId = null;
+    
+        if ($mentor) {
+            $mentorId = $mentor->id;
+        } elseif ($mentee) {
+            $menteeId = $mentee->id;
+        } else {
+            return abort(403, 'Unauthorized access'); // If user is neither a mentor nor a mentee
+        }
+            
+        // Fetch module names
+        $modulenames = Module::pluck('name', 'id');
+    
+        // Fetch mappings if the user is a mentor
+        $mappings = $mentor ? DB::table('mappings')->where('mentorname_id', $mentor->id)->get() : collect();
 
-    // Fetch assignments from mappings
-    $assignments = DB::table('mappings')->get();
-    $mentorIds = $assignments->pluck('mentorname_id')->toArray();
-    $menteeIds = $assignments->pluck('menteename_id')->toArray();
+        // Fetch mentee details
+        $menteeIds = $mappings->pluck('menteename_id')->toArray();
+        $menteenames = !empty($menteeIds) ? DB::table('mentees')->whereIn('id', $menteeIds)->pluck('name', 'id') : collect();
+    
+        $mentorIds = $mappings->pluck('mentorname_id')->toArray();
+        // $menteeIds = $mappings->pluck('menteename_id')->toArray();
+    
+        // Fetch mentor names based on mappings
+        $mentornames = Mentor::whereIn('id', $mentorIds)->pluck('name', 'id');
+            
+    
+        // Fetch mentee names based on mappings
+        $menteenames = Mentee::whereIn('id', $menteeIds)->pluck('name', 'id');
 
-    // Fetch mentor and mentee names based on mappings
-    $mentornames = Mentor::whereIn('id', $mentorIds)
-        ->pluck('name', 'id')
-        ->prepend(trans('global.pleaseSelect'), '');
+    
+        // Fetch sessions if the user is a mentor
+        $sessions = $mentorId ? DB::table('sessions')->where('mentorname_id', $mentorId)->get() : collect();
 
-    $menteenames = Mentee::whereIn('id', $menteeIds)
-        ->pluck('name', 'id')
-        ->prepend(trans('global.pleaseSelect'), '');
+    
+        // Fetch session titles
+        $sessionTitles = DB::table('sessions')->pluck('session_title', 'id');
+    
+        // Pass all data to the view
+        return view('mentor.sessions.index', compact(
+            'mentornames',
+            'menteenames',
+            'modulenames',
+            'sessions',
+            'mappings',
+            'sessionTitles'
+        ));
+    }
+    
 
-    // Fetch sessions for mentors in mappings
-    $sessions = DB::table('sessions')
-        ->whereIn('mentorname_id', $mentorIds)
-        ->get();
-
-    // Fetch session titles
-    $sessionTitles = DB::table('sessions')->pluck('session_title', 'id');
-
-    // Pass all data to the view
-    return view('mentor.sessions.index', compact(
-        'menteenames',
-        'mentornames',
-        'modulenames',
-        'sessions',
-        'assignments',
-        'sessionTitles'
-    ));
-}
 
     public function store(Request $request)
     {
-        // Validate request data
+        // Validate request data (removed 'mentorname_id' validation)
         $request->validate([
             'sessiondatetime' => 'required|date',
             'sessionlink' => 'required|string',
             'session_title' => 'required|string',
             'session_duration_minutes' => 'required|integer',
             'modulename_id' => 'required|integer',
-            'mentorname_id' => 'required|integer',
-            'menteename_id' => 'required|integer',
         ]);
-    
-        // Insert session record into the database
+
+
+        // Get the logged-in user ID
+        $userId = Auth::id();
+
+        // Fetch the mentor ID of the logged-in user
+        $mentor = DB::table('mentors')->where('user_id', $userId)->first();
+
+        // If the user is not a mentor, return an error
+        if (!$mentor) {
+            return abort(403, 'Unauthorized access');
+        }
+
+        // Fetch the mapped mentee ID from the mappings table
+        $mapping = DB::table('mappings')->where('mentorname_id', $mentor->id)->first();
+
+
+        // If no mentee is mapped, return an error
+        if (!$mapping) {
+            return back()->with('error', 'No mentee is mapped to this mentor.');
+        }
+
+        // Insert session record into the database with the logged-in mentor ID and mapped mentee ID
         $sessionId = DB::table('sessions')->insertGetId([
-            'sessiondatetime' => $request->sessiondatetime, // Save as it is
+            'sessiondatetime' => $request->sessiondatetime,
             'sessionlink' => $request->sessionlink,
             'session_title' => $request->session_title,
             'session_duration_minutes' => $request->session_duration_minutes,
             'modulename_id' => $request->modulename_id,
-            'mentorname_id' => $request->mentorname_id,
-            'menteename_id' => $request->menteename_id,
+            'mentorname_id' => $mentor->id, // Set mentor ID from logged-in user
+            'menteename_id' => $mapping->menteename_id, // Use mapped mentee ID
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    
-        // Fetch mentor and mentee details
-        $mentor = DB::table('mentors')->where('id', $request->mentorname_id)->first();
-        $mentee = DB::table('mentees')->where('id', $request->menteename_id)->first();
+
+        // Fetch mentor, mentee, and module details
+        $mentee = DB::table('mentees')->where('id', $mapping->menteename_id)->first();
         $module = DB::table('modules')->where('id', $request->modulename_id)->first();
-    
-        if ($mentor && $mentee && $module) {
+
+
+        if ($mentee && $module) {
             // Create a session object with necessary details
             $sessionData = (object) [
                 'id' => $sessionId,
@@ -103,49 +148,17 @@ class SessionController extends Controller
                 'session_title' => $request->session_title,
                 'session_duration_minutes' => $request->session_duration_minutes,
             ];
-    
+
             // Send emails to mentor and mentee
             Mail::to($mentor->email)->send(new SessionCreatedMentor($sessionData));
             Mail::to($mentee->email)->send(new SessionCreatedMentee($sessionData));
         }
-    
-        // Fetch module names
-        $modulenames = DB::table('modules')->pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
-    
-        // Fetch mentor and mentee names from mappings
-        $assignments = DB::table('mappings')->get();
-        $mentorIds = $assignments->pluck('mentorname_id')->toArray();
-        $menteeIds = $assignments->pluck('menteename_id')->toArray();
-    
-        $mentornames = DB::table('mentors')
-            ->whereIn('id', $mentorIds)
-            ->pluck('name', 'id')
-            ->prepend(trans('global.pleaseSelect'), '');
-    
-        $menteenames = DB::table('mentees')
-            ->whereIn('id', $menteeIds)
-            ->pluck('name', 'id')
-            ->prepend(trans('global.pleaseSelect'), '');
-    
-        // Retrieve sessions based on mentor IDs
-        $sessions = DB::table('sessions')->whereIn('mentorname_id', $mentorIds)->get();
-    
-        // Fetch session titles for the view
-        $sessionTitles = DB::table('sessions')->pluck('session_title', 'id');
-    
-        // Return view with necessary data
-        return view('mentor.sessions.index', compact(
-            'menteenames',
-            'mentornames',
-            'modulenames',
-            'sessions',
-            'assignments',
-            'sessionTitles'
-        ));
+
+        // Redirect back with success message
+        return redirect()->route('sessions.index')->with('success', 'Session created successfully.');
     }
+
     
-
-
     
     public function edit($id)
     {
@@ -188,16 +201,16 @@ class SessionController extends Controller
             $session = DB::table('sessions')->where('id', $id)->first();
 
             
-            $modulenames = Module::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
-            $mentornames = Mentor::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
+            $modulenames = Module::pluck('name', 'id');
+            $mentornames = Mentor::pluck('name', 'id');
 
-            $menteenames = Mentee::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
+            $menteenames = Mentee::pluck('name', 'id');
             $assignments = DB::table('mappings')->get();
             $mentorIds = $assignments->pluck('mentorname_id')->toArray();
             $menteeIds = $assignments->pluck('menteename_id')->toArray();
             $sessions = Session::where('mentorname_id', $mentorIds)->get();
-            $mentornames = Mentor::whereIn('id', $mentorIds)->pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
-            $menteenames = Mentee::whereIn('id', $menteeIds)->pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
+            $mentornames = Mentor::whereIn('id', $mentorIds)->pluck('name', 'id');
+            $menteenames = Mentee::whereIn('id', $menteeIds)->pluck('name', 'id');
             $sessionTitles = DB::table('sessions')->pluck('session_title', 'id');
 
         // Redirect back to the session list or another route

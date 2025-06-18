@@ -331,7 +331,11 @@
                                         <td>
                                             @if(isset($sessions[$module->id]) && count($sessions[$module->id]) > 0)
                                                 @foreach($sessions[$module->id] as $session)
-                                                    <a href="{{ $session->sessionlink }}" target="_blank" class="btn btn-sm btn-primary">Join Session</a><br>
+                                                    @if($session->done == 1)
+                                                        <button class="btn btn-sm btn-secondary" disabled>Session Completed</button><br>
+                                                    @else
+                                                        <a href="{{ $session->sessionlink }}" target="_blank" class="btn btn-sm btn-primary">Join Session</a><br>
+                                                    @endif
                                                 @endforeach
                                             @endif
                                         </td>
@@ -339,6 +343,7 @@
                                     @endif
                                 @endforeach
                             </tbody>
+
                         </table>
                     </div>
                 </div>

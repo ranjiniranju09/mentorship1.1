@@ -9,7 +9,7 @@
 <body>
     <h2>New Session Created</h2>
     <p>Hello {{ $session->mentorname }},</p>
-    <p>A new session has been created:</p>
+    <p>A new session has been Scheduled with the following details:</p>
     <ul>
         <li><strong>Module:</strong> {{ $session->modulename }}</li>
         <li><strong>Date & Time:</strong> {{ $session->sessiondatetime }}</li>

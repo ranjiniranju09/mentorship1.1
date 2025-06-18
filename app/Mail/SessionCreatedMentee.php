@@ -32,6 +32,6 @@ class SessionCreatedMentee extends Mailable
     public function build()
     {
         return $this->view('emails.session_created_mentee')
-                    ->subject('New Session Organized');
+                    ->subject('New Session Organized by Mentor');
     }
 }
