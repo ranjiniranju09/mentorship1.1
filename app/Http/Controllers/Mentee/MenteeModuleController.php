@@ -32,19 +32,16 @@ class MenteeModuleController extends Controller
 {
 	public function index()
     {
-        // Retrieve all modules
         $modules = Module::all();
-
-        // Get the user ID of the authenticated user
         $userId = auth()->user()->id;
 
-        // Fetch the max quiz result for each module for the user
+        // Fetch highest quiz score per module for the current user
         $maxResults = DB::table('quiz_results')
             ->select('module_id', DB::raw('MAX(score) as max_score'))
             ->where('user_id', $userId)
             ->groupBy('module_id')
             ->get()
-            ->keyBy('module_id'); // Use module_id as the key for easy lookup
+            ->keyBy('module_id');
 
         return view('mentee.modules.index', compact('modules', 'maxResults'));
     }

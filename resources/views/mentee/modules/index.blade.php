@@ -2,99 +2,128 @@
 @section('content')
 
 
-<style type="text/css">
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        background: #f8f9fa;
+    }
+
     .content {
         padding: 10px;
         float: right;
-        width: 95%;
+        width: 100%;
     }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 30px;
+        color: #333;
+    }
+
     .module-card {
-        background-color: #fff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-        transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s;
-        height: 350px; /* Set a fixed height to ensure uniform size */
+        background: linear-gradient(to bottom right, #ffffff, #f1f1f1);
+        padding: 25px;
+        border-radius: 20px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+        height: 370px;
         display: flex;
         flex-direction: column;
-        justify-content: space-between; /* Keeps "Explore" button at the bottom */
-    }
-    .module-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-    }
-    .module-title {
-        color: #007bff;
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .module-name {
-        color: #555;
-        font-size: 18px;
-        margin-bottom: 10px;
-        font-weight: bold;
-    }
-    .module-description {
-        color: #555;
-        font-size: 16px;
-        flex-grow: 1; /* Allows the description area to grow within the card */
-        overflow: hidden;
-        text-overflow: ellipsis;
-        margin-bottom: 20px;
-    }
-    .module-action {
-        display: flex;
         justify-content: space-between;
-        align-items: center;
+        transition: all 0.3s ease-in-out;
+        border: 1px solid #e0e0e0;
     }
-    .action-btn {
-        background-color: #007bff;
-        color: #fff;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        font-size: 16px;
-        font-weight: bold;
+
+    .module-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
     }
-    .action-btn:hover {
-        background-color: #0056b3;
-    }
-    /* Status icons */
-    .status-icons {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
+
+    .module-name {
+        font-size: 20px;
+        color: #333;
+        font-weight: 600;
         margin-top: 10px;
     }
+
+    .module-objective {
+        font-size: 15px;
+        color: #555;
+        margin-top: 10px;
+        flex-grow: 1;
+    }
+
+    .module-action {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 15px;
+    }
+
+    .action-btn {
+        background: linear-gradient(to right, #007bff, #0056b3);
+        color: #fff;
+        padding: 10px 24px;
+        border: none;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease-in-out;
+        position: relative;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+        text-decoration: none !important;
+    }
+
+    .action-btn:hover {
+        background: linear-gradient(to right, #0056b3, #003e80);
+        color: #fff ; 
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0, 86, 179, 0.4);
+        text-decoration: none !important;
+    }
+
+    .action-btn i {
+        font-size: 16px;
+    }
+
 
     .status {
         display: inline-flex;
         align-items: center;
-        font-size: 0.9rem;
-        padding: 4px 8px;
-        border-radius: 4px;
-        background-color: #f1f1f1;
-        color: #555;
-        transition: background-color 0.3s;
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        border-radius: 30px;
+        font-weight: 500;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
 
     .status i {
-        margin-right: 4px;
+        margin-right: 6px;
     }
 
-    .status.mastered { background-color: #5a4b81; color: white; }
-    .status.proficient { background-color:rgb(64, 186, 98); color: white; }
-    .status.familiar { background-color: #ffbf69; color: white; }
-    .status.attempted { background-color: #ff7f50; color: white; }
-    .status.not-started, .status.quiz { background-color: #d3d3d3; color: black; }
-    .status.unit-test { background-color: #333333; color: white; }
+    .status.mastered    { background-color: #5a4b81; color: #fff; }
+    .status.proficient  { background-color: #28a745; color: #fff; }
+    .status.familiar    { background-color: #ffc107; color: #000; }
+    .status.attempted   { background-color: #fd7e14; color: #fff; }
+    .status.not-started { background-color: #d6d8db; color: #000; }
 
-
+    @media (max-width: 768px) {
+        .module-card {
+            height: auto;
+        }
+        .action-btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
 </style>
+
 @if (session('success'))
     <div class="alert alert-success">
         {{ session('success') }}
@@ -106,8 +135,8 @@
         {{ session('error') }}
     </div>
 @endif
-<center><h1>Modules</h1></center>
-<hr>
+<!-- <center><h1>Modules</h1></center>
+<hr> -->
 <div class="container">
     <div class="row">
         <div class="col-md-12">
@@ -121,18 +150,40 @@
                         <div class="col-md-4">
                             <div class="module-card">
                                 @php
-                                    // Retrieve maxResult for the current module
                                     $maxResult = $maxResults->get($module->id) ?? (object) ['max_score' => null];
+                                    $score = $maxResult->max_score;
+
+                                    // Badge logic
+                                    $badge = [
+                                        'class' => 'not-started',
+                                        'icon' => 'fa-solid fa-circle-xmark',
+                                        'text' => 'Not Started'
+                                    ];
+
+                                    if ($score === 8) {
+                                        $badge = ['class' => 'mastered', 'icon' => 'fa-solid fa-crown', 'text' => 'Mastered'];
+                                    } elseif ($score >= 6) {
+                                        $badge = ['class' => 'proficient', 'icon' => 'fa-solid fa-user-graduate', 'text' => 'Proficient'];
+                                    } elseif ($score >= 3) {
+                                        $badge = ['class' => 'familiar', 'icon' => 'fa-solid fa-user', 'text' => 'Familiar'];
+                                    } elseif ($score > 0) {
+                                        $badge = ['class' => 'attempted', 'icon' => 'fa-solid fa-xmark', 'text' => 'Attempted'];
+                                    }
                                 @endphp
 
-                                @if($maxResult && $maxResult->max_score === 8)
-                                    <span class="status mastered" title="Mastered"><i class="fa-solid fa-crown"></i> Mastered</span>
-                                @elseif($maxResult && $maxResult->max_score === 5)
-                                    <span class="status proficient" title="Proficient"><i class="fa-solid fa-user-graduate"></i> Proficient</span>
-                                @elseif($maxResult && $maxResult->max_score === 0)
-                                    <span class="status attempted" title="Attempted"><i class="fa-solid fa-xmark"></i> Poor</span>
-                                @else
-                                    <span class="status not-started" title="Not Started"><i class="fa-solid fa-circle-xmark"></i> Quiz Not Started</span>
+                                <span class="status {{ $badge['class'] }}" title="{{ $badge['text'] }}">
+                                    <i class="{{ $badge['icon'] }}"></i> {{ $badge['text'] }}
+                                </span>
+
+                                @if ($score !== null)
+                                    <div class="progress" style="height: 8px; margin-top: 10px; border-radius: 4px;">
+                                        <div class="progress-bar bg-info" role="progressbar"
+                                            style="width: {{ ($score / 8) * 100 }}%;"
+                                            aria-valuenow="{{ $score }}"
+                                            aria-valuemin="0"
+                                            aria-valuemax="8">
+                                        </div>
+                                    </div>
                                 @endif
 
                                 <h2 class="module-name">{{ $module->name ?? '' }}</h2>
@@ -140,7 +191,9 @@
                                     <strong>Objective: </strong>{{ Str::limit($module->objective, 150) ?? '' }}
                                 </p>
                                 <div class="module-action">
-                                    <a href="{{ route('chapterscontent', ['module_id' => $module->id]) }}" class="action-btn" target="_blank">Explore</a>
+                                    <a href="{{ route('chapterscontent', ['module_id' => $module->id]) }}" class="action-btn" target="_blank">
+                                        <i class="fa-solid fa-arrow-right"></i> Explore
+                                    </a>
                                 </div>
                             </div>
                         </div>

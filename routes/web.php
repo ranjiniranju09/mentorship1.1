@@ -149,8 +149,6 @@ Route::prefix('mentor')->group(function() {
     Route::get('/modulequiz', [QuizController::class, 'moduleQuizShow'])->name('quiz.modulequiz');
     // Route::get('/modulequiz/{moduleId}', [QuizController::class, 'moduleQuizShow'])->name('quiz.modulequiz');
 
-
-
     // Route::get('/tasksindex',[TaskController::class,'index'])->name('tasks.index');
 
     Route::get('/modules', [ModuleController::class, 'index'])->name('mentor.modules');
@@ -179,11 +177,14 @@ Route::prefix('mentor')->group(function() {
 
 
 
-    Route::get('/mentortickets', [SupportController::class, 'mentortickets'])->name('mentor.tickets');
+    Route::get('/mentortickets', [SupportController::class, 'mentormappedtickets'])->name('mentor.tickets');
 
     Route::get('/mentorticketscreate', [SupportController::class, 'mentorticketscreate'])->name('mentor.support.create');
 
     Route::POST('/mentorticketsstore', [SupportController::class, 'mentorticketstore'])->name('mentor.tickets.store');
+
+    Route::put('/mentor/tickets/{id}/update', [SupportController::class, 'update'])->name('mentor.tickets.update');
+
 
     Route::delete('/mentor/tickets/{id}', [SupportController::class, 'destroy'])->name('mentor.tickets.destroy');
 
@@ -194,18 +195,12 @@ Route::prefix('mentor')->group(function() {
 });
 
 
-//Route::get('/mentee/dashboard', 'MenteeDashboardController@index')->name('mentee.dashboard');
-
-
 Route::prefix('mentee')->group(function() {
     Route::get('/tasks-index', [MenteeTaskController::class, 'index'])->name('menteetasks.index');
     Route::post('/tasks/submit',[MenteeTaskController::class, 'submit'] )->name('tasks.submit');
     Route::post('/tasks/submitck', [MentorTaskController::class, 'storeCKEditorImages'])->name('tasks.storeCKEditorImages');
 
     Route::get('/tasks/show/{taskId}', [MenteeTaskController::class, 'show']);
-
-
-    // Route::get('/menteesessions', [MenteeModuleController::class, 'index'])->name('menteesessions.index');
 
     Route::get('/knowledgebank', [KnowledgebankController::class, 'index'])->name('knowledgebank.index');
     

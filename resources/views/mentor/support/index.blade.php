@@ -83,6 +83,7 @@
             <thead>
                 <tr>
                     <th>Category</th>
+                    <th>Mentee Name</th>
                     <th>Description</th>
                     <th>Created on</th>
                     <th>File</th>
@@ -92,9 +93,16 @@
                 </tr>
             </thead>
             <tbody>
+                @if ($tickets->isEmpty())
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">No tickets found for your mapped mentees.</td>
+                    </tr>
+                @endif
+
                 @foreach ($tickets as $ticket)
                     <tr>
                         <td>{{ $ticket->category }}</td>
+                        <td>{{ $ticket->user_name }}</td>
                         <td>{{ $ticket->ticket_description }}</td>
                         <td>{{ \Carbon\Carbon::parse($ticket->created_at)->format('Y-m-d') }}</td>
                         <td>
@@ -104,27 +112,155 @@
                                 No file
                             @endif
                         </td>
-                        <td>{{ $ticket->response ?? 'No Response Yet' }}</td> <!-- ✅ Show response -->
+                        <td>{{ $ticket->response ?? 'No Response Yet' }}</td>
                         <td>
-                            {{--@if ($ticket->resolved_at)
-                                {{ \Carbon\Carbon::parse($ticket->resolved_at)->format('Y-m-d') }}
+                            @if ($ticket->resolved_on)
+                                {{ \Carbon\Carbon::parse($ticket->resolved_on)->format('Y-m-d') }}
                             @else
                                 Pending
-                            @endif--}}
+                            @endif
                         </td>
+
                         <td>
-                            <!-- Delete Form -->
-                            <form action="{{ route('mentor.tickets.destroy', $ticket->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this ticket?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">X</button>
-                            </form>
+                            <div class="d-flex gap-2">
+                                <form action="{{ route('mentor.tickets.destroy', $ticket->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this ticket?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill shadow-sm">🗑️</button>
+                                </form>
+
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#editTicketModal{{ $ticket->id }}">
+                                    ✏️
+                                </button>
+                            </div>
                         </td>
+
                     </tr>
                 @endforeach
             </tbody>
         </table>
+        @foreach ($tickets as $ticket)
+        <!-- Edit Modal -->
+        <div class="modal fade" id="editTicketModal{{ $ticket->id }}" tabindex="-1" aria-labelledby="editTicketModalLabel{{ $ticket->id }}" aria-hidden="true">
+            <div class="modal-dialog">
+                <form action="{{ route('mentor.tickets.update', $ticket->id) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editTicketModalLabel{{ $ticket->id }}">Respond to Ticket</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p><strong>Category:</strong> {{ $ticket->category }}</p>
+                            <p><strong>Mentee:</strong> {{ $ticket->user_name }}</p>
+                            <p><strong>Description:</strong> {{ $ticket->ticket_description }}</p>
+                            <div class="mb-3">
+                                <label for="responseTextarea{{ $ticket->id }}" class="form-label">Response</label>
+                                <textarea class="form-control" name="response" id="responseTextarea{{ $ticket->id }}" rows="4">{{ $ticket->response }}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-success">Update Response</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @endforeach
+
+        <br><hr><br>
+        <h4>Your Submitted Tickets</h4>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Created on</th>
+                        <th>File</th>
+                        <th>Response</th>
+                        <th>Resolved on</th>
+                        <th>Action</th> {{-- ✅ Add this --}}
+                    </tr>
+                </thead>
+                <tbody>
+                    @if ($mentorTickets->isEmpty())
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">No tickets submitted by you.</td>
+                        </tr>
+                    @endif
+
+                    @foreach ($mentorTickets as $ticket)
+                        <tr>
+                            <td>{{ $ticket->category }}</td>
+                            <td>{{ $ticket->ticket_description }}</td>
+                            <td>{{ \Carbon\Carbon::parse($ticket->created_at)->format('Y-m-d') }}</td>
+                            <td>
+                                @if ($ticket->attachment_url)
+                                    <a href="{{ $ticket->attachment_url }}" target="_blank">View File</a>
+                                @else
+                                    No file
+                                @endif
+                            </td>
+                            <td>{{ $ticket->response ?? 'No Response Yet' }}</td>
+                            <td>
+                                @if ($ticket->resolved_on)
+                                    {{ \Carbon\Carbon::parse($ticket->resolved_on)->format('Y-m-d') }}
+                                @else
+                                    Pending
+                                @endif
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <form action="{{ route('mentor.tickets.destroy', $ticket->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this ticket?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill shadow-sm">🗑️</button>
+                                    </form>
+
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#editMentorTicketModal{{ $ticket->id }}">
+                                        ✏️
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Edit Modal -->
+                        <div class="modal fade" id="editMentorTicketModal{{ $ticket->id }}" tabindex="-1" aria-labelledby="editMentorTicketModalLabel{{ $ticket->id }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <form action="{{ route('mentor.tickets.update', $ticket->id) }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="editMentorTicketModalLabel{{ $ticket->id }}">Edit Your Ticket</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label for="ticketDescription{{ $ticket->id }}" class="form-label">Description</label>
+                                                <textarea name="ticket_description" id="ticketDescription{{ $ticket->id }}" class="form-control" rows="4">{{ $ticket->ticket_description }}</textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="submit" class="btn btn-success">Save Changes</button>
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    @endforeach
+                </tbody>
+
+            </table>
+        </div>
+
+
     </div>
+
 </div>
 
 @endsection

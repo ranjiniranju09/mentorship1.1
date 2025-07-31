@@ -2,10 +2,7 @@
 @section('content')
 
 <style>
-    /* Existing and new styles */
-
-    /* Adjusted Styles */
-
+ 
 /* Container adjustments */
 .container {
     margin: 10px auto;
